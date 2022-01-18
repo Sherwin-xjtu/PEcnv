@@ -75,7 +75,7 @@ def load_adjust_coverages(cnarr, ref_cnarr, skip_low,
     ref_matched = ref_matched[ok_cvg_indices]
 
     # Apply corrections for known systematic biases in coverage
-    cnarr.center_all(skip_low=skip_low)
+    #cnarr.center_all(skip_low=skip_low)
     # Skip bias corrections if most bins have no coverage (e.g. user error)
     if (cnarr['log2'] > params.NULL_LOG2_COVERAGE - params.MIN_REF_COVERAGE
         ).sum() <= len(cnarr) // 2:
@@ -172,7 +172,8 @@ def center_by_window(cnarr, fraction, sort_key):
     order = np.argsort(sort_key, kind='mergesort')
     df = df.iloc[order]
     biases = smoothing.rolling_median(df['log2'], fraction)
-    # biases = smoothing.savgol(df['log2'], fraction)
+    #biases = smoothing.savgol(df['log2'], fraction)
+    #biases = smoothing.wiener_filter(df['log2'], fraction)
     df['log2'] -= biases
     fixarr = cnarr.as_dataframe(df)
     fixarr.sort()

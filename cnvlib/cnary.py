@@ -108,7 +108,7 @@ class CopyNumArray(GenomicArray):
 
     # Manipulation
 
-    def center_all(self, estimator=pd.Series.median, by_chrom=True,
+    def center_all(self, estimator=pd.Series.mean, by_chrom=True,
                    skip_low=False, verbose=False):
         """Re-center log2 values to the autosomes' average (in-place).
 

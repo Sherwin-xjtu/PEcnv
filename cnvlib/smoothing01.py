@@ -79,7 +79,7 @@ def EWMA_SEG(breakpointSelects):
     segs = []
     start = breakpointSelects[0]
     itm = 1
-    edgeSize = 1
+    edgeSize = 20
     for i in range(len(breakpointSelects)):
         if i + 1 < len(breakpointSelects):
             if itm == 1:
@@ -104,7 +104,7 @@ def EWMA_SEG(breakpointSelects):
 def breakpoint_select(dfArr, sp, upline, dowline):
     index = 0
     breakpoints = []
-    for i in dfArr.ewm(span=1).mean():
+    for i in dfArr.ewm(span=sp).mean():
         if i > upline or i < dowline:
             breakpoints.append(index)
         index += 1
@@ -156,15 +156,7 @@ def rolling_median(x, width):
             #seg_x = savgol_filter(x[seg[0]:seg[1]], 7, 3, mode='nearest')
             #seg_x = savgol_filter(x[seg[0]:seg[1]], 51, 3, mode='nearest')
             seg_x = x[seg[0]:seg[1]]
-            #seg_x = seg_x.tolist()
-            if seg_x.size > winSize+1:
-                seg_x, wing, signal = check_inputs(seg_x, width)
-                seg_rolled = signal.rolling(2 * wing + 1, 1, center=True).median()
-                seg_rolled = np.asfarray(seg_rolled[wing:-wing])
-                seg_rolled_toli = seg_rolled.tolist()
-            else:
-                seg_rolled_toli = seg_x.tolist()
-                
+            seg_x = seg_x.tolist()
             # normal_x = x[:seg[0]]+x[seg[1]:]
             #normal_x = np.concatenate((x[:seg[0]], x[seg[1]:]))
             normal_x = x[tmPos:seg[0]]
@@ -175,7 +167,7 @@ def rolling_median(x, width):
                 rolled = np.asfarray(rolled[wing:-wing])
                 rolled_toli = rolled.tolist()
                 #rolled_toli[seg[0]:seg[0]] = iter(seg_x)
-                rolled_toli = rolled_toli + seg_rolled_toli
+                rolled_toli = rolled_toli + seg_x
                 if interm == 0:
                     #rolledAll = pd.Series(rolled_toli)
                     rolledAll = rolled_toli
@@ -186,7 +178,7 @@ def rolling_median(x, width):
             else:
                 rolled_toli = normal_x.tolist()
                 #rolled_toli[seg[0]:seg[0]] = iter(seg_x)
-                rolled_toli = rolled_toli + seg_rolled_toli
+                rolled_toli = rolled_toli + seg_x
                 if interm == 0:
                     #rolledAll = pd.Series(rolled_toli)
                     rolledAll = rolled_toli

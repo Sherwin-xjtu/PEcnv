@@ -57,176 +57,90 @@ def _pad_array(x, wing):
                            x[:-wing-1:-1]))
 
 
-def merge_segs(segs):
-    newSegs = []
-    tm = []
-    for li in segs:
-        if len(tm) == 0:
-            tm = li
-            newSegs.append(tm)
-        else:
-            if li[0] <= tm[1]:
-                tm = [tm[0],li[1]]
-                del(newSegs[-1])
-                newSegs.append(tm)
-            else:
-                newSegs.append(li)
-                tm = li
-    return newSegs
-
-
-def EWMA_SEG(breakpointSelects):
+def EWMA_SEG(breakpoint_select):
     segs = []
-    start = breakpointSelects[0]
+    start = breakpoint_select[0]
     itm = 1
-    edgeSize = 1
-    for i in range(len(breakpointSelects)):
-        if i + 1 < len(breakpointSelects):
+    for i in range(len(breakpoint_select)):
+        if i + 1 < len(breakpoint_select):
             if itm == 1:
-                start = breakpointSelects[i]
+                start = breakpoint_select[i]
             itm += 1
-            if breakpointSelects[i + 1] - breakpointSelects[i] < edgeSize:  #20 best
-                if i + 1 == len(breakpointSelects) - 1:
-                    if start - edgeSize > 0:
-                        segs.append([start - edgeSize, breakpointSelects[i + 1] + edgeSize])
+            if breakpoint_select[i + 1] - breakpoint_select[i] < 20:  #20 best
+                if i + 1 == len(breakpoint_select) - 1:
+                    if start - 20 > 0:
+                        segs.append([start - 20, breakpoint_select[i + 1] + 20])
                     else:
-                        segs.append([start, breakpointSelects[i + 1]])
-            elif breakpointSelects[i + 1] - breakpointSelects[i] > edgeSize:
-                end = breakpointSelects[i]
-                if start - edgeSize < 0:
-                    segs.append([start, end + edgeSize])
+                        segs.append([start, breakpoint_select[i + 1]])
+            elif breakpoint_select[i + 1] - breakpoint_select[i] > 20:
+                end = breakpoint_select[i]
+                if start - 20 < 0:
+                    segs.append([start, end + 20])
                 else:
-                    segs.append([start - edgeSize, end + edgeSize])
+                    segs.append([start - 20, end + 20])
                 itm = 1
     return segs
 
 
-def breakpoint_select(dfArr, sp, upline, dowline):
-    index = 0
-    breakpoints = []
-    for i in dfArr.ewm(span=1).mean():
-        if i > upline or i < dowline:
-            breakpoints.append(index)
-        index += 1
-    return breakpoints
-
-
 def EWMA_model(arr):
-    sp0 = 9
     mu0 = arr.mean()
-    num0 = float(2 / (1 + sp0))
-    std0 = arr.std()
-    
-    upline0 = mu0 + std0 * 3 * math.sqrt(num0 / (2 - num0))
-    dowline0 = mu0 - std0 * 3 * math.sqrt(num0 / (2 - num0))
-    breakpointSelects0 = breakpoint_select(arr, sp0, upline0, dowline0)
-    
-    arr_ = arr.iloc[::-1]
-    sp1 = 9
-    num1 = float(2 / (1 + sp1))
-    mu1 = arr_.mean()
-    num1 = float(2 / (1 + sp1))
-    std1 = arr_.std()
-    upline1 = mu1 + std1 * 3 * math.sqrt(num1 / (2 - num1))
-    dowline1 = mu1 - std1 * 3 * math.sqrt(num1 / (2 - num1))
-
-    breakpointSelects1 = breakpoint_select(arr_, sp1, upline1, dowline1)
-    breakpointSelects2 = []
-    for r in breakpointSelects1[::-1]:
-        breakpointSelects2.append(np.abs(r-(len(arr)-1)))
-    breakpointSelects = sorted(list(set(breakpointSelects0+breakpointSelects2)))
-    if len(breakpointSelects) > 0:
-        segs = EWMA_SEG(breakpointSelects)
+    num = float(2 / (1 + 10))
+    std = arr.std()
+    upline = mu0 + std * 3 * math.sqrt(num / (2 - num))
+    dowline = mu0 - std * 3 * math.sqrt(num / (2 - num))
+    index = 0
+    breakpoint_select = []
+    for i in arr.ewm(span=10).mean():
+        if i > upline or i < dowline:
+            breakpoint_select.append(index)
+        index += 1
+    if len(breakpoint_select) > 0:
+        segs = EWMA_SEG(breakpoint_select)
         return segs
     else:
-        return[[0,len(arr)-1]]
+        return[[0, len(arr)-1]]
 
 
 def rolling_median(x, width):
     #seq_data_arr = pd.DataFrame(x)
     seq_data_arr = x
     segs = EWMA_model(seq_data_arr)
-    newSegs = merge_segs(segs)
     interm = 0
-    tmPos = 0
-    winSize = 2
-    if len(newSegs) > 0:
-        for seg in newSegs:
+    if len(segs) > 0:
+        for seg in segs:
             """Rolling median with mirrored edges."""
             #seg_x = savgol_filter(x[seg[0]:seg[1]], 7, 3, mode='nearest')
             #seg_x = savgol_filter(x[seg[0]:seg[1]], 51, 3, mode='nearest')
             seg_x = x[seg[0]:seg[1]]
-            #seg_x = seg_x.tolist()
-            if seg_x.size > winSize+1:
-                seg_x, wing, signal = check_inputs(seg_x, width)
-                seg_rolled = signal.rolling(2 * wing + 1, 1, center=True).median()
-                seg_rolled = np.asfarray(seg_rolled[wing:-wing])
-                seg_rolled_toli = seg_rolled.tolist()
-            else:
-                seg_rolled_toli = seg_x.tolist()
-                
+            seg_x = seg_x.tolist()
             # normal_x = x[:seg[0]]+x[seg[1]:]
-            #normal_x = np.concatenate((x[:seg[0]], x[seg[1]:]))
-            normal_x = x[tmPos:seg[0]]
-            tmPos = seg[1]
-            if normal_x.size > winSize+1:
+            normal_x = np.concatenate((x[:seg[0]], x[seg[1]:]))
+            if len(normal_x) > 3:
                 normal_x, wing, signal = check_inputs(normal_x, width)
-                rolled = signal.rolling(winSize * wing + 1, 1, center=True).median()
+                rolled = signal.rolling(20 * wing + 1, 1, center=True).median()
                 rolled = np.asfarray(rolled[wing:-wing])
                 rolled_toli = rolled.tolist()
-                #rolled_toli[seg[0]:seg[0]] = iter(seg_x)
-                rolled_toli = rolled_toli + seg_rolled_toli
+                rolled_toli[seg[0]:seg[0]] = iter(seg_x)
                 if interm == 0:
-                    #rolledAll = pd.Series(rolled_toli)
-                    rolledAll = rolled_toli
+                    rolledAll = pd.Series(rolled_toli)
                     interm += 1
                 else:
-                    #rolledAll += pd.Series(rolled_toli)
-                    rolledAll += rolled_toli
+                    rolledAll += pd.Series(rolled_toli)
             else:
                 rolled_toli = normal_x.tolist()
-                #rolled_toli[seg[0]:seg[0]] = iter(seg_x)
-                rolled_toli = rolled_toli + seg_rolled_toli
+                rolled_toli[seg[0]:seg[0]] = iter(seg_x)
                 if interm == 0:
-                    #rolledAll = pd.Series(rolled_toli)
-                    rolledAll = rolled_toli
+                    rolledAll = pd.Series(rolled_toli)
                     interm += 1
                 else:
-                    #rolledAll += pd.Series(rolled_toli)
-                    rolledAll += rolled_toli
-        #rolledAll_ = rolledAll/len(segs)
-        if tmPos != x[x.size-1]:
-            endList = x[tmPos:]
-            if endList.size > winSize+1:
-                endList, wing, signal = check_inputs(endList, width)
-                rolled = signal.rolling(winSize * wing + 1, 1, center=True).median()
-                rolled = np.asfarray(rolled[wing:-wing])
-                rolled_toli = rolled.tolist()
-                if interm == 0:
-                    #rolledAll = pd.Series(rolled_toli)
-                    rolledAll = rolled_toli
-                    interm += 1
-                else:
-                    #rolledAll += pd.Series(rolled_toli)
-                    rolledAll += rolled_toli
-            else:
-                endList = endList.tolist()
-                #rolled_toli[seg[0]:seg[0]] = iter(seg_x)
-                rolled_toli =  endList
-                if interm == 0:
-                    #rolledAll = pd.Series(rolled_toli)
-                    rolledAll = rolled_toli
-                    interm += 1
-                else:
-                    #rolledAll += pd.Series(rolled_toli)
-                    rolledAll += rolled_toli
-        rolledAll_ = np.asfarray(rolledAll)
+                    rolledAll += pd.Series(rolled_toli)
+        rolledAll_ = rolledAll/len(segs)
     # if rolled.hasnans:
     #     rolled = rolled.interpolate()
     else:
         """Rolling median with mirrored edges."""
         x, wing, signal = check_inputs(x, width)
-        rolled = signal.rolling(winSize * wing + 1, 1, center=True).median() 
+        rolled = signal.rolling(20 * wing + 1, 1, center=True).median() 
         rolledAll_ = np.asfarray(rolled[wing:-wing])
     return rolledAll_
 

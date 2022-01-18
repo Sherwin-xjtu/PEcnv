@@ -9,6 +9,7 @@ from io import StringIO
 import numpy as np
 import pandas as pd
 from skgenome import tabio
+from skgenome import GenomicArray
 from skgenome.intersect import iter_slices
 
 from .. import core, parallel, params, smoothing, vary
@@ -89,6 +90,100 @@ def _ds(args):
     return _do_segmentation(*args)
 
 
+def merge_segs(nsegs):
+    newSegs = []
+    tm = []
+    for li in nsegs:
+        if len(tm) == 0:
+            tm = li
+            newSegs.append(tm)
+        else:
+            if li[0] <= tm[1]:
+                tm = [tm[0],li[1]]
+                del(newSegs[-1])
+                newSegs.append(tm)
+            else:
+                newSegs.append(li)
+                tm = li
+    return newSegs
+
+
+def EWMA_SEG(breakpointSelects):
+    csegs = []
+    start = breakpointSelects[0]
+    itm = 1
+    edgeSize = 2
+    for i in range(len(breakpointSelects)):
+        if i + 1 < len(breakpointSelects):
+            if itm == 1:
+                start = breakpointSelects[i]
+            itm += 1
+            if breakpointSelects[i + 1] - breakpointSelects[i] < edgeSize:  #20 best
+                if i + 1 == len(breakpointSelects) - 1:
+                    if start - edgeSize > 0:
+                        csegs.append([start - edgeSize, breakpointSelects[i + 1] + edgeSize])
+                    else:
+                        csegs.append([start, breakpointSelects[i + 1]])
+            elif breakpointSelects[i + 1] - breakpointSelects[i] > edgeSize:
+                end = breakpointSelects[i]
+                if start - edgeSize < 0:
+                    csegs.append([start, end + edgeSize])
+                else:
+                    csegs.append([start - edgeSize, end + edgeSize])
+                itm = 1
+    return csegs
+
+
+def breakpoint_select(dfArr, sp, upline, dowline):
+    index = 0
+    breakpoints = []
+    for i in dfArr.ewm(span=sp).mean():
+        if i > upline or i < dowline:
+            breakpoints.append(index)
+        index += 1
+    return breakpoints
+
+
+def EWMA_model(arr):
+    sp0 = 9
+    mu0 = arr.mean()
+    num0 = float(2 / (1 + sp0))
+    std0 = arr.std()
+    upline0 = mu0 + std0 * 3 * math.sqrt(num0 / (2 - num0))
+    dowline0 = mu0 - std0 * 3 * math.sqrt(num0 / (2 - num0))
+    breakpointSelects0 = breakpoint_select(arr, sp0, upline0, dowline0)
+
+    arr_ = arr.iloc[::-1]
+    sp1 = 9
+    num1 = float(2 / (1 + sp1))
+    mu1 = arr_.mean()
+    num1 = float(2 / (1 + sp1))
+    std1 = arr_.std()
+    upline1 = mu1 + std1 * 3 * math.sqrt(num1 / (2 - num1))
+    dowline1 = mu1 - std1 * 3 * math.sqrt(num1 / (2 - num1))
+
+    breakpointSelects1 = breakpoint_select(arr_, sp1, upline1, dowline1)
+    breakpointSelects2 = []
+    for r in breakpointSelects1[::-1]:
+        breakpointSelects2.append(np.abs(r-(len(arr)-1)))
+    breakpointSelects = sorted(list(set(breakpointSelects0+breakpointSelects2)))
+    if len(breakpointSelects) > 0:
+        msegs = EWMA_SEG(breakpointSelects)
+        return msegs
+    else:
+        return[[0,len(arr)-1]]
+
+
+
+def EWMA(I):
+    if len(I) > 1:
+        #seq_data_arr = pd.DataFrame(I)
+        segs = EWMA_model(I)
+        segs = merge_segs(segs)
+    else:
+        segs = []
+    return segs
+
 def _do_segmentation(cnarr, method, threshold, variants=None,
                      skip_low=False, skip_outliers=10, min_weight=0,
                      save_dataframe=False,
@@ -143,28 +238,56 @@ def _do_segmentation(cnarr, method, threshold, variants=None,
         rscript = {'cbs': cbs.CBS_RSCRIPT,
                    'flasso': flasso.FLASSO_RSCRIPT,
                   }[method]
-
+        segsEWMA = EWMA(filtered_cn['log2'])
+        segsNew = [x for x in segsEWMA if x != []]
+        #print(filtered_cn[1:3]['log2'])
         filtered_cn['start'] += 1  # Convert to 1-indexed coordinates for R
-        with tempfile.NamedTemporaryFile(suffix='.cnr', mode="w+t") as tmp:
-            # TODO tabio.write(filtered_cn, tmp, 'seg')
-            filtered_cn.data.to_csv(tmp, index=False, sep='\t',
-                                    float_format='%.6g', mode="w+t")
-            tmp.flush()
-            script_strings = {
-                'probes_fname': tmp.name,
-                'sample_id': cnarr.sample_id,
-                'threshold': threshold,
-								'smooth_cbs': smooth_cbs
-            }
-            with core.temp_write_text(rscript % script_strings,
-                                      mode='w+t') as script_fname:
-                seg_out = core.call_quiet(rscript_path,
-                                          "--no-restore",
-                                          "--no-environ",
-                                          script_fname)
-        # Convert R dataframe contents (SEG) to a proper CopyNumArray
-        # NB: Automatically shifts 'start' back from 1- to 0-indexed
-        segarr = tabio.read(StringIO(seg_out.decode()), "seg", into=CNA)
+        segarrList = []
+        if segsNew == []:
+            with tempfile.NamedTemporaryFile(suffix='.cnr', mode="w+t") as tmp:
+                # TODO tabio.write(filtered_cn, tmp, 'seg')
+                filtered_cn.data.to_csv(tmp, index=False, sep='\t',
+                                        float_format='%.6g', mode="w+t")
+                tmp.flush() 
+                script_strings = {
+                    'probes_fname': tmp.name,
+                    'sample_id': cnarr.sample_id,
+                    'threshold': threshold,
+                    'smooth_cbs': smooth_cbs
+                }
+                with core.temp_write_text(rscript % script_strings,
+                                          mode='w+t') as script_fname:
+                    seg_out = core.call_quiet(rscript_path,
+                                              "--no-restore",
+                                              "--no-environ",
+                                              script_fname)
+            # Convert R dataframe contents (SEG) to a proper CopyNumArray
+            # NB: Automatically shifts 'start' back from 1- to 0-indexed
+            segarr = tabio.read(StringIO(seg_out.decode()), "seg", into=CNA)
+        else:
+            for seg in segsNew:
+            
+                with tempfile.NamedTemporaryFile(suffix='.cnr', mode="w+t") as tmp:
+                    # TODO tabio.write(filtered_cn, tmp, 'seg')
+                    filtered_cn[seg[0]:seg[1]].data.to_csv(tmp, index=False, sep='\t',float_format='%.6g', mode="w+t")
+                    tmp.flush()
+                    script_strings = {
+                        'probes_fname': tmp.name,
+                        'sample_id': cnarr.sample_id,
+                        'threshold': threshold,
+                        'smooth_cbs': smooth_cbs
+                   }
+                    with core.temp_write_text(rscript % script_strings, mode='w+t') as script_fname:
+                        seg_out = core.call_quiet(rscript_path,
+                                                  "--no-restore",
+                                                  "--no-environ",
+                                                  script_fname)
+                # Convert R dataframe contents (SEG) to a proper CopyNumArray
+                # NB: Automatically shifts 'start' back from 1- to 0-indexed
+                sga = tabio.read(StringIO(seg_out.decode()), "seg", into=CNA)
+                segarrList.append(sga)
+            segli = [x for x in segarrList if x != []] 
+            segarr = cnarr.concat(segli)
         if method == 'flasso':
             # Merge adjacent bins with same log2 value into segments
             if 'weight' in filtered_cn:
