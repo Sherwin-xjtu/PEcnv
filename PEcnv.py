@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Command-line interface for CNVkit, the Copy Number Variation toolkit."""
+"""Command-line interface for PEcnv, the Copy Number Variation toolkit."""
 import logging
 from cnvlib import commands
 
