@@ -2,6 +2,7 @@
 *.pyc
 *.pyo
 
+
 # Jython class files (present if using Jython)
 *.class
 
@@ -44,4 +45,4 @@ test/*.pdf
 build/
 dist/
 doc/_build
-CNVkit.egg-info/
+PEcnv.egg-info/
