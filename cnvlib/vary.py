@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from skgenome import GenomicArray
 
-
 class VariantArray(GenomicArray):
     """An array of genomic intervals, treated as variant loci.
 
