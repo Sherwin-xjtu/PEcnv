@@ -13,7 +13,6 @@ A novel tool to detecting various sizes of CNVs based on WGS, WES, and panel seq
 - [Install](#install)
 - [Usage](#usage)
 - [Example Readmes](#example-readmes)
-- [Related Efforts](#related-efforts)
 - [Maintainers](#maintainers)
 - [Contributing](#contributing)
 - [License](#license)
@@ -54,10 +53,6 @@ $ standard-readme-spec
 
 To see how the specification has been applied, see the [example-readmes](example-readmes/).
 
-## Related Efforts
-
-- [Art of Readme](https://github.com/noffle/art-of-readme) - 💌 Learn the art of writing quality READMEs.
-- [open-source-template](https://github.com/davidbgk/open-source-template/) - A README template to encourage open-source contributions.
 
 ## Maintainers
 
@@ -66,8 +61,6 @@ To see how the specification has been applied, see the [example-readmes](example
 ## Contributing
 
 Feel free to dive in! [Open an issue](https://github.com/Sherwin-xjtu/PEcnv/issues/new) or submit PRs.
-
-Standard Readme follows the [Contributor Covenant](http://contributor-covenant.org/version/1/3/0/) Code of Conduct.
 
 
 ## License
