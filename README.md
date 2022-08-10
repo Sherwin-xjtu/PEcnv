@@ -111,6 +111,6 @@ Standard Readme follows the [Contributor Covenant](http://contributor-covenant.o
 
 ## License
 
-[MIT](LICENSE) © Richard Littauer
+[MIT](LICENSE) © Sherwin
 
 
