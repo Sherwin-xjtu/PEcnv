@@ -12,7 +12,6 @@ A novel tool to detecting various sizes of CNVs based on WGS, WES, and panel seq
 - [Background](#background)
 - [Install](#install)
 - [Usage](#usage)
-- [Example Readmes](#example-readmes)
 - [Maintainers](#maintainers)
 - [Contributing](#contributing)
 - [License](#license)
@@ -48,10 +47,6 @@ This is only a documentation package. You can print out [spec.md](spec.md) to yo
 $ standard-readme-spec
 # Prints out the standard-readme spec
 ```
-
-## Example Readmes
-
-To see how the specification has been applied, see the [example-readmes](example-readmes/).
 
 
 ## Maintainers
