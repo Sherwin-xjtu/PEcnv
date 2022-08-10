@@ -33,11 +33,6 @@ Uncompress the installation zip:
     $ cd /my/install/dir/
     $ unzip /path/to/PEcnv.zip
     
-This project uses [node](http://nodejs.org) and [npm](https://npmjs.com). Go check them out if you don't have them locally installed.
-
-```sh
-$ npm install --global standard-readme-spec
-```
 
 ## Usage
 
