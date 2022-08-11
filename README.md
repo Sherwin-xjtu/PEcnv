@@ -51,7 +51,6 @@ $ python PEcnv.py run tumor.bam --normal normal.bam  --target CNVTarget.bed --fa
 
 Feel free to dive in! [Open an issue](https://github.com/Sherwin-xjtu/PEcnv/issues/new) or submit PRs.
 
-
 ## License
 
 [MIT](LICENSE) © Sherwin
