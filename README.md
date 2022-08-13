@@ -36,7 +36,6 @@ Uncompress the installation zip:
 
 ## Usage
 
-This is only a documentation package. You can print out [spec.md](spec.md) to your console:
 
 ```sh
 $ python PEcnv.py run tumor.bam --normal normal.bam  --targets CNVTarget.bed --fasta reference.fa --annotate refFlat.txt --preprocess dukeExcludeRegions.bed --output-refBaseline refBaseline.tsv --output-dir our_dir
