@@ -46,7 +46,7 @@ def _pad_array(x, wing):
                            x,
                            x[:-wing - 1:-1]))
 
-
+"""
 def merge_segs(segs):
     newSegs = []
     tm = []
@@ -63,8 +63,26 @@ def merge_segs(segs):
                 newSegs.append(li)
                 tm = li
     return newSegs
+"""
+
+def merge_segs(segs):
+    if not segs:
+        return []
+
+    segs.sort()  # Ensure segments are sorted by start
+    merged = [segs[0]]
+
+    for current in segs[1:]:
+        last = merged[-1]
+        if current[0] <= last[1]:  # overlap
+            last[1] = max(last[1], current[1])
+        else:
+            merged.append(current)
+
+    return merged
 
 
+"""
 def EWMA_SEG(breakpointSelects):
     segs = []
     start = breakpointSelects[0]
@@ -89,12 +107,55 @@ def EWMA_SEG(breakpointSelects):
                     segs.append([start - edgeSize, end + edgeSize])
                 itm = 1
     return segs
+"""
 
 
+def EWMA_SEG(breakpointSelects):
+    edgeSize = 20
+    segments = []
+    current_segment = []
+    previous = None
+
+    for bp in breakpointSelects:
+        if previous is None:
+            current_segment.append(bp)
+        else:
+            if bp - previous < edgeSize:
+                current_segment.append(bp)
+            else:
+                segments.append(current_segment)
+                current_segment = [bp]
+        previous = bp
+
+    if current_segment:
+        segments.append(current_segment)
+
+    expanded_segments = []
+    for seg in segments:
+        start = seg[0]
+        end = seg[-1]
+        if start - edgeSize > 0:
+            expanded_segments.append([start - edgeSize, end + edgeSize])
+        else:
+            expanded_segments.append([start, end + edgeSize])
+
+    return expanded_segments
+
+"""
 def breakpoint_select(dfArr, sp, upline, dowline):
     index = 0
     breakpoints = []
     for i in dfArr.ewm(span=sp).mean():
+        if i > upline or i < dowline:
+            breakpoints.append(index)
+        index += 1
+    return breakpoints
+"""
+
+def breakpoint_select(dfArr, sp, upline, dowline):
+    index = 0
+    breakpoints = []
+    for i in dfArr.ewm(span=sp, adjust=False).mean():
         if i > upline or i < dowline:
             breakpoints.append(index)
         index += 1
