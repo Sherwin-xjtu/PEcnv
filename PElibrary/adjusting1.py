@@ -47,6 +47,7 @@ def _pad_array(x, wing):
                            x[:-wing - 1:-1]))
 
 
+"""
 def merge_segs(segs):
     newSegs = []
     tm = []
@@ -63,7 +64,23 @@ def merge_segs(segs):
                 newSegs.append(li)
                 tm = li
     return newSegs
+    """
 
+def merge_segs(segs):
+    if not segs:
+        return []
+
+    segs.sort()  # Ensure segments are sorted by start
+    merged = [segs[0]]
+
+    for current in segs[1:]:
+        last = merged[-1]
+        if current[0] <= last[1]:  # overlap
+            last[1] = max(last[1], current[1])
+        else:
+            merged.append(current)
+
+    return merged
 
 def EWMA_SEG(breakpointSelects):
     segs = []
