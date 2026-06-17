@@ -421,7 +421,7 @@ def sort_breakpoints(breakpoints):
     # newBreakpoints['mean'] = var
     return newBreakpoints
 
-
+"""
 def selectingSegments(breakpoint_select):
     segs = []
     start = breakpoint_select[0]
@@ -445,6 +445,27 @@ def selectingSegments(breakpoint_select):
                     segs.append([start - 2, end + 2])
                 itm = 1
     return segs
+    """
+
+
+def selectingSegments(breakpoints):
+    segments = []
+    start = breakpoints[0]
+    end = breakpoints[0]
+
+    for i in range(1, len(breakpoints)):
+        distance = breakpoints[i] - breakpoints[i - 1]
+        
+        if distance < 20:
+            end = breakpoints[i]
+        elif distance > 10:
+            segments.append((start - 2, end + 2))
+            start = breakpoints[i]
+            end = breakpoints[i]
+
+    segments.append([start - 2, end + 2])
+
+    return segments
 
 
 def breakpoint_select(dfArr, upline, dowline):
