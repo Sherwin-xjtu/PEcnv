@@ -46,7 +46,7 @@ def _pad_array(x, wing):
                            x,
                            x[:-wing - 1:-1]))
 
-
+"""
 def EWMA_SEG(breakpoint_select):
     segs = []
     start = breakpoint_select[0]
@@ -70,6 +70,39 @@ def EWMA_SEG(breakpoint_select):
                     segs.append([start - 20, end + 20])
                 itm = 1
     return segs
+"""
+
+
+def EWMA_SEG(breakpointSelects):
+    edgeSize = 20
+    segments = []
+    current_segment = []
+    previous = None
+
+    for bp in breakpointSelects:
+        if previous is None:
+            current_segment.append(bp)
+        else:
+            if bp - previous < edgeSize:
+                current_segment.append(bp)
+            else:
+                segments.append(current_segment)
+                current_segment = [bp]
+        previous = bp
+
+    if current_segment:
+        segments.append(current_segment)
+
+    expanded_segments = []
+    for seg in segments:
+        start = seg[0]
+        end = seg[-1]
+        if start - edgeSize > 0:
+            expanded_segments.append([start - edgeSize, end + edgeSize])
+        else:
+            expanded_segments.append([start, end + edgeSize])
+
+    return expanded_segments
 
 
 def EWMA_model(arr):
