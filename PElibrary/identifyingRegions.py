@@ -141,7 +141,7 @@ def haarSeg(I, breaksFdrQ,
             'size': segEd - segSt,
             'mean': segs[segSt]}
 
-
+"""
 def FDRThres(x, q, stdev):
     """False discovery rate (FDR) threshold."""
     M = len(x)
@@ -160,7 +160,27 @@ def FDRThres(x, q, stdev):
                       p[0], m[0], q)
         T = x_sorted[0] + 1e-16  # ~= 2^-52, like MATLAB "eps"
     return T
+"""
 
+def FDRThres(x, q, stdev):
+    """"""False discovery rate (FDR) threshold.""""""
+    M = len(x)
+    if M < 2:
+        return 0
+
+    m = np.arange(1, M + 1) / M
+    x_sorted = np.sort(np.abs(x))[::-1]
+    p = 2 * (1 - stats.norm.cdf(x_sorted, loc=0, scale=stdev))  # like R ""pnorm""
+    # Get the largest index for which p <= m*q
+    indices = np.nonzero(p <= m * q)[0]
+    if len(indices):
+        T = x_sorted[indices[-1]]
+    else:
+        logging.debug(
+            ""No passing p-values: min p=%.4g, min m=%.4g, q=%s"", p[0], m[0], q
+        )
+        T = x_sorted[0] + 1e-16  # ~= 2^-52, like MATLAB ""eps""
+    return T
 
 def SegmentByPeaks(data, peaks, weights=None):
     segs = np.zeros_like(data)
@@ -421,7 +441,7 @@ def sort_breakpoints(breakpoints):
     # newBreakpoints['mean'] = var
     return newBreakpoints
 
-
+"""
 def selectingSegments(breakpoint_select):
     segs = []
     start = breakpoint_select[0]
@@ -445,8 +465,28 @@ def selectingSegments(breakpoint_select):
                     segs.append([start - 2, end + 2])
                 itm = 1
     return segs
+"""
 
+def selectingSegments(breakpoints):
+    segments = []
+    start = breakpoints[0]
+    end = breakpoints[0]
 
+    for i in range(1, len(breakpoints)):
+        distance = breakpoints[i] - breakpoints[i - 1]
+        
+        if distance < 20:
+            end = breakpoints[i]
+        elif distance > 10:
+            segments.append((start - 2, end + 2))
+            start = breakpoints[i]
+            end = breakpoints[i]
+
+    segments.append([start - 2, end + 2])
+
+    return segments
+
+"""
 def breakpoint_select(dfArr, upline, dowline):
     index = 0
     breakpoints = []
@@ -455,7 +495,16 @@ def breakpoint_select(dfArr, upline, dowline):
             breakpoints.append(index)
         index += 1
     return breakpoints
+"""
 
+def breakpoint_select(dfArr, sp, upline, dowline):
+    index = 0
+    breakpoints = []
+    for i in dfArr.ewm(span=sp, adjust=False).mean():
+        if i > upline or i < dowline:
+            breakpoints.append(index)
+        index += 1
+    return breakpoints
 
 def indentifyingRegions(arr):
     mu0 = arr[0].mean()
