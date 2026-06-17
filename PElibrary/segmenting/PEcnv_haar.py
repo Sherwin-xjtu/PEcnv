@@ -474,7 +474,7 @@ def EWMA_SEG(breakpointSelects):
 
     return expanded_segments
     
-
+"""
 def breakpoint_select(dfArr, upline, dowline):
     index = 0
     breakpoints = []
@@ -483,7 +483,17 @@ def breakpoint_select(dfArr, upline, dowline):
             breakpoints.append(index)
         index += 1
     return breakpoints
+"""
 
+def breakpoint_select(dfArr, sp, upline, dowline):
+    index = 0
+    breakpoints = []
+    for i in dfArr.ewm(span=sp, adjust=False).mean():
+        if i > upline or i < dowline:
+            breakpoints.append(index)
+        index += 1
+    return breakpoints
+    
 
 def EWMA_model(arr):
     mu0 = arr[0].mean()
